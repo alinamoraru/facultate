@@ -1,67 +1,52 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"net"
-	"os"
-	"strings"
-	"regexp"
-	"strconv"
+    "bufio"
+    "fmt"
+    "net"
+    "os"
+    "time"
 )
 
 func main() {
 
-	// connect to this socket
-	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
+    message("Se porneste clientul...")
+    conn, err := net.Dial("tcp", "127.0.0.1:4956")
+    exitOnError(err)
 
-	msg_to_send := []string{""}
-	var search string
+    before := time.Now()
+    message("")
+    message("Inainte:  ", before)
+    fmt.Fprintf(conn, before.Format(time.RFC3339Nano)+"\n")
 
+    str, err := bufio.NewReader(conn).ReadString('\n')
+    exitOnError(err)
+    if len(str) < 1 {
+        message("Eroare: String invalid!")
+        os.Exit(1)
+    }
 
+    received, err := time.Parse(time.RFC3339Nano, str[:len(str)-1])
+    exitOnError(err)
+    message("Primit:", received)
 
-		// read in input from stdin
-		reader := bufio.NewReader(os.Stdin)
+    after := time.Now()
+    message("Dupa:   ", after)
 
-		fmt.Print("Inceputul intervalului: ")
-		a, _ := reader.ReadString('\n')
-		msg_to_send = append(msg_to_send, a)
-		
-		fmt.Print("Finalul intervalului: ")
-		b, _ := reader.ReadString('\n')
-		msg_to_send = append(msg_to_send, b)
+    correction := after.Sub(before) / 2
 
-		fmt.Print("Numarul de elemente necesare: ")
-		nr, _ := reader.ReadString('\n')
-		msg_to_send = append(msg_to_send, nr)
+    message("")
+    message("Corectie interval: +", correction)
+    message("Timpul este", received.Add(correction))
+}
 
-		re := regexp.MustCompile("[0-9]+")
-		search = re.FindAllString(nr, -1)[0]
+func message(a ...interface{}) (n int, err error) {
+    return fmt.Print("[C] ", fmt.Sprintln(a...))
+}
 
-		number_of_elements, err := strconv.Atoi(search)
-    	if err == nil {}
-
-		for i := 1; i <= number_of_elements; i++ {
-
-			fmt.Print("Introduceti un numar: ")
-
-			number, _ := reader.ReadString('\n')
-
-			msg_to_send = append(msg_to_send, number)
-
-		}
-
-		msg_to_send = append(msg_to_send, ".")
-
-		newString := strings.Join(msg_to_send, " ")
-
-		fmt.Print("Clientul a trimis datele: " + "\n" + newString + "\n")
-
-		// send to socket
-		fmt.Fprintf(conn, newString)
-
-		// listen for reply
-		message, _ := bufio.NewReader(conn).ReadString('.')
-		fmt.Print("Clientul a primit raspunsul: " + "\n" + message + "\n")
-
+func exitOnError(err error) {
+    if err != nil {
+        message("Eroare:", err)
+        os.Exit(1)
+    }
 }
